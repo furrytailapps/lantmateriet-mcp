@@ -1,0 +1,58 @@
+{
+  "name": "lantmateriet-mcp",
+  "version": "1.0.0",
+  "description": "MCP server wrapping Lantmäteriet (Swedish Land Survey) APIs for property, elevation, and map data",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/furrytailapps/lantmateriet-mcp.git"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "lantmateriet",
+    "sweden",
+    "property",
+    "elevation",
+    "geodata",
+    "hvd"
+  ],
+  "author": "Yesper",
+  "bugs": {
+    "url": "https://github.com/furrytailapps/lantmateriet-mcp/issues"
+  },
+  "homepage": "https://github.com/furrytailapps/lantmateriet-mcp",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "prettier": "prettier --check .",
+    "prettier:fix": "prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.2",
+    "mcp-handler": "^1.0.5",
+    "next": "^15.0.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "proj4": "^2.9.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/proj4": "^2.5.0",
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@vitest/coverage-v8": "^4.0.16",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^15.0.0",
+    "prettier": "^3.7.4",
+    "typescript": "^5.0.0",
+    "vitest": "^4.0.16"
+  }
+}
