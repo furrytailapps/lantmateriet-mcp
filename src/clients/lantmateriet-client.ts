@@ -1,6 +1,14 @@
 import { getAccessToken, hasCredentials } from '@/lib/auth';
 import { UpstreamApiError, NotFoundError } from '@/lib/errors';
-import type { PropertyInfo, PropertySearchResult, ElevationResult, MapUrlResult, AddressResult } from '@/types/lantmateriet';
+import type {
+  PropertyInfo,
+  PropertySearchResult,
+  ElevationResult,
+  MapUrlResult,
+  AddressResult,
+  StacSearchResponse,
+  StacSearchResultItem,
+} from '@/types/lantmateriet';
 import { Sweref99Point, BoundingBox, CRS_SWEREF99TM } from '@/lib/coordinates';
 
 /**
@@ -14,6 +22,10 @@ const OPEN_ORTOFOTO_WMTS = 'https://api.lantmateriet.se/open/ortofoto/v1/wmts/1.
 
 // WMS endpoints for property boundaries
 const PROPERTY_WMS = 'https://api.lantmateriet.se/open/fastighet/v1/wms';
+
+// STAC API endpoints (free, CC-BY 4.0)
+const STAC_ORTO_URL = 'https://api.lantmateriet.se/stac-orto/v1';
+const STAC_HOJD_URL = 'https://api.lantmateriet.se/stac-hojd/v1';
 
 /**
  * Make authenticated request to Lantmäteriet API
@@ -295,5 +307,81 @@ export const lantmaterietClient = {
       crs: CRS_SWEREF99TM,
       bbox,
     };
+  },
+
+  /**
+   * Search STAC catalog for ortofoto or elevation data
+   * Uses the free STAC API (CC-BY 4.0)
+   */
+  async searchStac(
+    bbox: BoundingBox,
+    collection: 'ortofoto' | 'hojd',
+    maxResults: number = 10,
+  ): Promise<StacSearchResultItem[]> {
+    const stacUrl = collection === 'ortofoto' ? STAC_ORTO_URL : STAC_HOJD_URL;
+
+    // STAC API expects bbox in [minX, minY, maxX, maxY] order (SWEREF99TM)
+    const bboxArray = [bbox.minX, bbox.minY, bbox.maxX, bbox.maxY];
+
+    const searchBody = {
+      bbox: bboxArray,
+      limit: maxResults,
+    };
+
+    // STAC API may require authentication for some endpoints
+    let response: Response;
+    if (hasCredentials()) {
+      const token = await getAccessToken();
+      response = await fetch(`${stacUrl}/search`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/geo+json',
+        },
+        body: JSON.stringify(searchBody),
+      });
+    } else {
+      // Try without auth for open STAC endpoints
+      response = await fetch(`${stacUrl}/search`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/geo+json',
+        },
+        body: JSON.stringify(searchBody),
+      });
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new UpstreamApiError(`STAC API error: ${errorText}`, response.status, 'Lantmäteriet STAC');
+    }
+
+    const data = (await response.json()) as StacSearchResponse;
+
+    // Transform STAC items to simplified output
+    return data.features.map((item) => {
+      // Extract band names from eo:bands if available
+      const bands = item.properties['eo:bands']?.map((b) => b.common_name || b.name) || [];
+
+      // Find download URL (usually 'data' or 'visual' asset)
+      const dataAsset = item.assets['data'] || item.assets['visual'] || Object.values(item.assets)[0];
+      const downloadUrl = dataAsset?.href;
+
+      // Find thumbnail if available
+      const thumbnailAsset = item.assets['thumbnail'] || item.assets['preview'];
+      const thumbnailUrl = thumbnailAsset?.href;
+
+      return {
+        id: item.id,
+        datetime: item.properties.datetime,
+        bbox: item.bbox,
+        resolution: item.properties.resolution,
+        bands: bands.length > 0 ? bands : undefined,
+        downloadUrl,
+        thumbnailUrl,
+      };
+    });
   },
 };

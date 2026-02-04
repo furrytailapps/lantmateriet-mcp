@@ -51,19 +51,6 @@ export interface MapUrlResult {
 }
 
 /**
- * HVD Dataset description
- */
-export interface HvdDataset {
-  name: string;
-  nameSwedish: string;
-  description: string;
-  access: 'open' | 'authenticated';
-  license: string;
-  formats: string[];
-  apiType: string;
-}
-
-/**
  * GeoJSON geometry (simplified)
  */
 export interface GeoJsonGeometry {
@@ -94,4 +81,69 @@ export interface LantmaterietApiError {
   error: string;
   error_description?: string;
   status?: number;
+}
+
+/**
+ * STAC Item Asset
+ */
+export interface StacAsset {
+  href: string;
+  type?: string;
+  title?: string;
+  roles?: string[];
+}
+
+/**
+ * STAC Item from Lantmäteriet STAC API
+ */
+export interface StacItem {
+  id: string;
+  type: 'Feature';
+  stac_version: string;
+  geometry: GeoJsonGeometry;
+  bbox: number[];
+  properties: {
+    'datetime': string;
+    'proj:epsg'?: number;
+    'resolution'?: number;
+    'eo:bands'?: Array<{
+      name: string;
+      common_name?: string;
+    }>;
+    [key: string]: unknown;
+  };
+  assets: Record<string, StacAsset>;
+  links: Array<{
+    rel: string;
+    href: string;
+    type?: string;
+  }>;
+}
+
+/**
+ * STAC Search Response
+ */
+export interface StacSearchResponse {
+  type: 'FeatureCollection';
+  features: StacItem[];
+  numberMatched?: number;
+  numberReturned?: number;
+  links?: Array<{
+    rel: string;
+    href: string;
+    type?: string;
+  }>;
+}
+
+/**
+ * Simplified STAC item for tool output
+ */
+export interface StacSearchResultItem {
+  id: string;
+  datetime: string;
+  bbox: number[];
+  resolution?: number;
+  bands?: string[];
+  downloadUrl?: string;
+  thumbnailUrl?: string;
 }

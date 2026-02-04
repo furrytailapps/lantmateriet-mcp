@@ -4,14 +4,14 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { propertySearchTool, propertySearchHandler } from './property-search';
 import { elevationTool, elevationHandler } from './elevation';
 import { mapUrlTool, mapUrlHandler } from './map-url';
-import { describeTool, describeHandler } from './describe';
+import { stacSearchTool, stacSearchHandler } from './stac-search';
 
 // Tool registry: 4 tools following monorepo constraint
 const tools = [
   { definition: propertySearchTool, handler: propertySearchHandler },
   { definition: elevationTool, handler: elevationHandler },
   { definition: mapUrlTool, handler: mapUrlHandler },
-  { definition: describeTool, handler: describeHandler },
+  { definition: stacSearchTool, handler: stacSearchHandler },
 ];
 
 /**

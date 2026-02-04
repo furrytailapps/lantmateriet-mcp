@@ -12,19 +12,19 @@ https://lantmateriet-mcp.vercel.app/mcp
 
 ## Available Tools (4)
 
-| Tool                 | Description                                            |
-| -------------------- | ------------------------------------------------------ |
-| `lm_property_search` | Find properties by coordinate, address, or designation |
-| `lm_elevation`       | Get terrain height at coordinates                      |
-| `lm_map_url`         | Generate WMS/WMTS URLs for map display                 |
-| `lm_describe`        | Document available HVD datasets and their schemas      |
+| Tool                 | Description                                                  |
+| -------------------- | ------------------------------------------------------------ |
+| `lm_property_search` | Find properties by coordinate, address, or designation       |
+| `lm_elevation`       | Get terrain height at coordinates                            |
+| `lm_map_url`         | Generate WMS/WMTS URLs for map display                       |
+| `lm_stac_search`     | Search STAC catalog for downloadable ortofoto/elevation data |
 
 ## Project Structure
 
 ```
 src/
 ├── app/[transport]/route.ts    # MCP endpoint
-├── clients/lantmateriet-client.ts  # API client with OAuth2
+├── clients/lantmateriet-client.ts  # API client with OAuth2 + STAC
 ├── lib/
 │   ├── auth.ts                 # OAuth2 token management
 │   ├── coordinates.ts          # SWEREF99↔WGS84 conversion
@@ -35,9 +35,9 @@ src/
 │   ├── property-search.ts      # lm_property_search
 │   ├── elevation.ts            # lm_elevation
 │   ├── map-url.ts              # lm_map_url
-│   └── describe.ts             # lm_describe
+│   └── stac-search.ts          # lm_stac_search
 └── types/
-    └── lantmateriet.ts         # API response types
+    └── lantmateriet.ts         # API response types + STAC types
 ```
 
 ## High Value Datasets (HVD)
