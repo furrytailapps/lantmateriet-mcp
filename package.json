@@ -5,7 +5,7 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "https://github.com/furrytailapps/lantmateriet-mcp.git"
+    "url": "https://github.com/furrytailapps/mcp-lantmateriet.git"
   },
   "keywords": [
     "mcp",
@@ -19,9 +19,9 @@
   ],
   "author": "Yesper",
   "bugs": {
-    "url": "https://github.com/furrytailapps/lantmateriet-mcp/issues"
+    "url": "https://github.com/furrytailapps/mcp-lantmateriet/issues"
   },
-  "homepage": "https://github.com/furrytailapps/lantmateriet-mcp",
+  "homepage": "https://github.com/furrytailapps/mcp-lantmateriet",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
