@@ -57,3 +57,14 @@ export class AuthenticationError extends McpToolError {
     this.name = 'AuthenticationError';
   }
 }
+
+/**
+ * Error for missing configuration (credentials, env vars, etc.)
+ * Use this instead of returning dummy/mock data when config is missing.
+ */
+export class ConfigurationError extends McpToolError {
+  constructor(message: string, missingConfig?: string) {
+    super(message, 'CONFIGURATION_ERROR', { missingConfig });
+    this.name = 'ConfigurationError';
+  }
+}

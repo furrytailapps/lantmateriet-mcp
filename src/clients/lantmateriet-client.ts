@@ -1,5 +1,5 @@
 import { getAccessToken, hasCredentials } from '@/lib/auth';
-import { UpstreamApiError, NotFoundError } from '@/lib/errors';
+import { UpstreamApiError, NotFoundError, ConfigurationError } from '@/lib/errors';
 import type {
   PropertyInfo,
   PropertySearchResult,
@@ -67,11 +67,11 @@ export const lantmaterietClient = {
    */
   async findPropertyByPoint(point: Sweref99Point): Promise<PropertySearchResult> {
     if (!hasCredentials()) {
-      // Return mock data for open usage without credentials
-      return {
-        properties: [],
-        totalCount: 0,
-      };
+      throw new ConfigurationError(
+        'Lantmäteriet API credentials required. Set LANTMATERIET_CONSUMER_KEY and ' +
+          'LANTMATERIET_CONSUMER_SECRET environment variables. Register at https://geotorget.lantmateriet.se/',
+        'LANTMATERIET_CONSUMER_KEY, LANTMATERIET_CONSUMER_SECRET',
+      );
     }
 
     const url = `${API_BASE_URL}/fastighetsindelning/v1/hitta?geometri=POINT(${point.x} ${point.y})`;
@@ -114,7 +114,11 @@ export const lantmaterietClient = {
    */
   async findPropertyByAddress(address: string): Promise<PropertySearchResult> {
     if (!hasCredentials()) {
-      return { properties: [], totalCount: 0 };
+      throw new ConfigurationError(
+        'Lantmäteriet API credentials required. Set LANTMATERIET_CONSUMER_KEY and ' +
+          'LANTMATERIET_CONSUMER_SECRET environment variables. Register at https://geotorget.lantmateriet.se/',
+        'LANTMATERIET_CONSUMER_KEY, LANTMATERIET_CONSUMER_SECRET',
+      );
     }
 
     // First, geocode the address
@@ -156,7 +160,11 @@ export const lantmaterietClient = {
    */
   async findPropertyByDesignation(designation: string): Promise<PropertyInfo | null> {
     if (!hasCredentials()) {
-      return null;
+      throw new ConfigurationError(
+        'Lantmäteriet API credentials required. Set LANTMATERIET_CONSUMER_KEY and ' +
+          'LANTMATERIET_CONSUMER_SECRET environment variables. Register at https://geotorget.lantmateriet.se/',
+        'LANTMATERIET_CONSUMER_KEY, LANTMATERIET_CONSUMER_SECRET',
+      );
     }
 
     const url = `${API_BASE_URL}/fastighetsindelning/v1/sok?beteckning=${encodeURIComponent(designation)}`;
@@ -201,9 +209,11 @@ export const lantmaterietClient = {
    */
   async getElevation(point: Sweref99Point): Promise<ElevationResult> {
     if (!hasCredentials()) {
-      // For demo purposes without credentials, return a simulated elevation
-      // In production, this would require authentication
-      throw new NotFoundError('Elevation service', 'requires authentication');
+      throw new ConfigurationError(
+        'Lantmäteriet API credentials required. Set LANTMATERIET_CONSUMER_KEY and ' +
+          'LANTMATERIET_CONSUMER_SECRET environment variables. Register at https://geotorget.lantmateriet.se/',
+        'LANTMATERIET_CONSUMER_KEY, LANTMATERIET_CONSUMER_SECRET',
+      );
     }
 
     const url = `${API_BASE_URL}/hojd/v1/punkt?nord=${point.y}&ost=${point.x}&referenssystem=3006`;
