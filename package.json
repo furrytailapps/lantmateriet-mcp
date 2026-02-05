@@ -1,5 +1,5 @@
 {
-  "name": "lantmateriet-mcp",
+  "name": "mcp-lantmateriet",
   "version": "1.0.0",
   "description": "MCP server wrapping Lantmäteriet (Swedish Land Survey) APIs for property, elevation, and map data",
   "type": "module",
