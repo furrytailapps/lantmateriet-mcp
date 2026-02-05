@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { lantmaterietClient } from '@/clients/lantmateriet-client';
 import { withErrorHandling } from '@/lib/response';
-import { wgs84ToSweref99, wgs84BboxToSweref99, validateBbox, CRS_WGS84 } from '@/lib/coordinates';
+import { wgs84ToSweref99, wgs84BboxToSweref99, sweref99BboxToWgs84, validateBbox, CRS_WGS84 } from '@/lib/coordinates';
 import { ValidationError } from '@/lib/errors';
 
 /**
@@ -73,14 +73,17 @@ export const mapUrlHandler = withErrorHandling(async (args: MapUrlInput) => {
       const sweref99Point = wgs84ToSweref99({ latitude: args.latitude, longitude: args.longitude });
       const result = lantmaterietClient.getTopographicMapUrl(sweref99Point, { width, height });
 
+      // Convert bbox from SWEREF99TM to WGS84 for agent consumption
+      const wgs84Bbox = result.bbox ? sweref99BboxToWgs84(result.bbox) : undefined;
+
       return {
         map_type: 'topographic',
         url: result.url,
         url_template_note: 'WMTS URL template - replace {z}/{y}/{x} with tile coordinates',
         layers: result.layers,
-        crs: result.crs,
+        crs: CRS_WGS84,
         center: { latitude: args.latitude, longitude: args.longitude },
-        bbox: result.bbox,
+        bbox: wgs84Bbox,
         license: 'CC-BY 4.0 Lantmäteriet',
         auth_required: false,
       };
@@ -94,14 +97,17 @@ export const mapUrlHandler = withErrorHandling(async (args: MapUrlInput) => {
       const sweref99Point = wgs84ToSweref99({ latitude: args.latitude, longitude: args.longitude });
       const result = lantmaterietClient.getOrthophotoMapUrl(sweref99Point, { width, height });
 
+      // Convert bbox from SWEREF99TM to WGS84 for agent consumption
+      const wgs84Bbox = result.bbox ? sweref99BboxToWgs84(result.bbox) : undefined;
+
       return {
         map_type: 'orthophoto',
         url: result.url,
         url_template_note: 'WMTS URL template - replace {z}/{y}/{x} with tile coordinates',
         layers: result.layers,
-        crs: result.crs,
+        crs: CRS_WGS84,
         center: { latitude: args.latitude, longitude: args.longitude },
-        bbox: result.bbox,
+        bbox: wgs84Bbox,
         license: 'CC-BY 4.0 Lantmäteriet',
         auth_required: false,
       };
@@ -130,9 +136,8 @@ export const mapUrlHandler = withErrorHandling(async (args: MapUrlInput) => {
         map_type: 'property',
         url: result.url,
         layers: result.layers,
-        crs: result.crs,
-        input_bbox: { minLat: args.minLat, minLon: args.minLon, maxLat: args.maxLat, maxLon: args.maxLon },
-        internal_bbox: result.bbox,
+        crs: CRS_WGS84,
+        bbox: { minLat: args.minLat, minLon: args.minLon, maxLat: args.maxLat, maxLon: args.maxLon },
         image_size: { width: Math.min(width, 2048), height: Math.min(height, 2048) },
         format: 'image/png',
         auth_required: false,

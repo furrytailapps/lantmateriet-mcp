@@ -183,3 +183,19 @@ export function wgs84BboxToSweref99(bbox: Wgs84Bbox): BoundingBox {
     maxY: maxCorner.y,
   };
 }
+
+/**
+ * Convert SWEREF99TM bounding box to WGS84
+ */
+export function sweref99BboxToWgs84(bbox: BoundingBox): Wgs84Bbox {
+  // Convert corners
+  const minCorner = sweref99ToWgs84({ x: bbox.minX, y: bbox.minY });
+  const maxCorner = sweref99ToWgs84({ x: bbox.maxX, y: bbox.maxY });
+
+  return {
+    minLat: minCorner.latitude,
+    minLon: minCorner.longitude,
+    maxLat: maxCorner.latitude,
+    maxLon: maxCorner.longitude,
+  };
+}

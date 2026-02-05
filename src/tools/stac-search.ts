@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { withErrorHandling } from '@/lib/response';
 import { ValidationError } from '@/lib/errors';
 import { lantmaterietClient } from '@/clients/lantmateriet-client';
-import { wgs84ToSweref99, wgs84BboxToSweref99, validateBbox, type BoundingBox, CRS_WGS84 } from '@/lib/coordinates';
+import { wgs84ToSweref99, wgs84BboxToSweref99, sweref99BboxToWgs84, validateBbox, type BoundingBox, CRS_WGS84 } from '@/lib/coordinates';
 
 /**
  * Input schema for STAC search tool
@@ -95,21 +95,23 @@ export const stacSearchHandler = withErrorHandling(async (args: StacSearchInput)
 
   const items = await lantmaterietClient.searchStac(bbox, collection, maxResults);
 
+  // Convert internal SWEREF99TM bbox to WGS84 for agent consumption
+  const wgs84Bbox = sweref99BboxToWgs84(bbox);
+
   return {
     collection,
-    input_coordinate_system: CRS_WGS84,
+    coordinate_system: CRS_WGS84,
     searchArea: {
-      minX: bbox.minX,
-      minY: bbox.minY,
-      maxX: bbox.maxX,
-      maxY: bbox.maxY,
-      crs: 'EPSG:3006 (SWEREF99TM)',
+      minLat: wgs84Bbox.minLat,
+      minLon: wgs84Bbox.minLon,
+      maxLat: wgs84Bbox.maxLat,
+      maxLon: wgs84Bbox.maxLon,
     },
     resultCount: items.length,
     items,
     notes: {
       format: 'COG (Cloud Optimized GeoTIFF) with Deflate compression',
-      crs: 'SWEREF99 TM (EPSG:3006)',
+      download_crs: 'SWEREF99 TM (EPSG:3006) - downloaded files use this CRS',
       license: 'CC-BY 4.0 - attribution required',
       nirBands:
         collection === 'ortofoto' ? 'Orthophotos may include NIR (near-infrared) band for vegetation analysis' : undefined,
