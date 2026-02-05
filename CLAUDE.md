@@ -7,7 +7,7 @@ MCP server wrapping Lantmäteriet (Swedish Land Survey) APIs for property, eleva
 ## Production URL
 
 ```
-https://lantmateriet-mcp.vercel.app/mcp
+https://mcp-lantmateriet.vercel.app/mcp
 ```
 
 ## Available Tools (<!-- AUTO:tool_count -->4<!-- /AUTO -->)
