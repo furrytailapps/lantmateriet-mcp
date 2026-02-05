@@ -2,24 +2,22 @@ import { z } from 'zod';
 import { withErrorHandling } from '@/lib/response';
 import { ValidationError } from '@/lib/errors';
 import { lantmaterietClient } from '@/clients/lantmateriet-client';
-import { normalizeToSweref99, validateBbox, type BoundingBox } from '@/lib/coordinates';
+import { wgs84ToSweref99, wgs84BboxToSweref99, validateBbox, type BoundingBox, CRS_WGS84 } from '@/lib/coordinates';
 
 /**
  * Input schema for STAC search tool
- * Supports either bounding box OR center point + radius
+ * Supports either bounding box OR center point + radius (all WGS84)
  */
 export const stacSearchInputSchema = {
-  // Option 1: Bounding box (SWEREF99TM)
-  minX: z.number().optional().describe('Min easting SWEREF99TM (e.g., 670000)'),
-  minY: z.number().optional().describe('Min northing SWEREF99TM (e.g., 6575000)'),
-  maxX: z.number().optional().describe('Max easting SWEREF99TM (e.g., 680000)'),
-  maxY: z.number().optional().describe('Max northing SWEREF99TM (e.g., 6585000)'),
+  // Option 1: Bounding box (WGS84)
+  minLat: z.number().optional().describe('Min latitude (WGS84). e.g., 59.30'),
+  minLon: z.number().optional().describe('Min longitude (WGS84). e.g., 18.00'),
+  maxLat: z.number().optional().describe('Max latitude (WGS84). e.g., 59.35'),
+  maxLon: z.number().optional().describe('Max longitude (WGS84). e.g., 18.10'),
 
-  // Option 2: Center point + radius
-  x: z.number().optional().describe('Center easting SWEREF99TM (e.g., 674000)'),
-  y: z.number().optional().describe('Center northing SWEREF99TM (e.g., 6580000)'),
-  latitude: z.number().optional().describe('Center latitude WGS84 (e.g., 59.33)'),
-  longitude: z.number().optional().describe('Center longitude WGS84 (e.g., 18.07)'),
+  // Option 2: Center point + radius (WGS84)
+  latitude: z.number().optional().describe('Center latitude (WGS84). e.g., 59.33'),
+  longitude: z.number().optional().describe('Center longitude (WGS84). e.g., 18.07'),
   radius: z.number().optional().default(500).describe('Search radius in meters (default: 500)'),
 
   // Filters
@@ -36,18 +34,16 @@ export const stacSearchTool = {
   description:
     'Search Lantmäteriet STAC catalog for downloadable orthophoto or elevation data. ' +
     'Returns COG (Cloud Optimized GeoTIFF) download URLs. Orthophotos include NIR bands for vegetation analysis. ' +
-    'Specify either a bounding box (minX/minY/maxX/maxY) or center point + radius (x/y or latitude/longitude + radius). ' +
-    'Example: x: 674000, y: 6580000, radius: 500 for Stockholm area.',
+    'Specify either a bounding box (minLat/minLon/maxLat/maxLon) or center point + radius (latitude/longitude + radius). ' +
+    'All coordinates in WGS84. Example: latitude: 59.33, longitude: 18.07, radius: 500 for Stockholm area.',
   inputSchema: stacSearchInputSchema,
 };
 
 type StacSearchInput = {
-  minX?: number;
-  minY?: number;
-  maxX?: number;
-  maxY?: number;
-  x?: number;
-  y?: number;
+  minLat?: number;
+  minLon?: number;
+  maxLat?: number;
+  maxLon?: number;
   latitude?: number;
   longitude?: number;
   radius?: number;
@@ -56,29 +52,24 @@ type StacSearchInput = {
 };
 
 /**
- * Build bounding box from input parameters
+ * Build bounding box from WGS84 input parameters, convert to SWEREF99TM
  */
 function buildBbox(input: StacSearchInput): BoundingBox {
-  // Option 1: Explicit bounding box
-  if (input.minX !== undefined && input.minY !== undefined && input.maxX !== undefined && input.maxY !== undefined) {
-    const bbox: BoundingBox = {
-      minX: input.minX,
-      minY: input.minY,
-      maxX: input.maxX,
-      maxY: input.maxY,
-    };
+  // Option 1: Explicit bounding box (WGS84)
+  if (input.minLat !== undefined && input.minLon !== undefined && input.maxLat !== undefined && input.maxLon !== undefined) {
+    const bbox = wgs84BboxToSweref99({
+      minLat: input.minLat,
+      minLon: input.minLon,
+      maxLat: input.maxLat,
+      maxLon: input.maxLon,
+    });
     validateBbox(bbox);
     return bbox;
   }
 
-  // Option 2: Center point + radius
-  if (input.x !== undefined || input.y !== undefined || input.latitude !== undefined || input.longitude !== undefined) {
-    const center = normalizeToSweref99({
-      x: input.x,
-      y: input.y,
-      latitude: input.latitude,
-      longitude: input.longitude,
-    });
+  // Option 2: Center point + radius (WGS84)
+  if (input.latitude !== undefined && input.longitude !== undefined) {
+    const center = wgs84ToSweref99({ latitude: input.latitude, longitude: input.longitude });
     const radius = input.radius || 500;
 
     const bbox: BoundingBox = {
@@ -92,7 +83,7 @@ function buildBbox(input: StacSearchInput): BoundingBox {
   }
 
   throw new ValidationError(
-    'Either bounding box (minX/minY/maxX/maxY) or center point (x/y or latitude/longitude) is required',
+    'Either bounding box (minLat/minLon/maxLat/maxLon) or center point (latitude/longitude) is required. All coordinates in WGS84.',
     'search_area',
   );
 }
@@ -106,6 +97,7 @@ export const stacSearchHandler = withErrorHandling(async (args: StacSearchInput)
 
   return {
     collection,
+    input_coordinate_system: CRS_WGS84,
     searchArea: {
       minX: bbox.minX,
       minY: bbox.minY,

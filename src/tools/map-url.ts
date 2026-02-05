@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { lantmaterietClient } from '@/clients/lantmateriet-client';
 import { withErrorHandling } from '@/lib/response';
-import { normalizeToSweref99, validateBbox, CRS_SWEREF99TM, CRS_WGS84 } from '@/lib/coordinates';
+import { wgs84ToSweref99, wgs84BboxToSweref99, validateBbox, CRS_WGS84 } from '@/lib/coordinates';
 import { ValidationError } from '@/lib/errors';
 
 /**
@@ -16,16 +16,14 @@ export const mapUrlInputSchema = {
     .describe(
       'Map type: "topographic" (terrain with roads/labels), "orthophoto" (aerial imagery), "property" (property boundaries)',
     ),
-  // Center point for topographic/orthophoto
-  x: z.number().optional().describe('Center easting in SWEREF99TM. For topographic/orthophoto maps'),
-  y: z.number().optional().describe('Center northing in SWEREF99TM. For topographic/orthophoto maps'),
-  latitude: z.number().optional().describe('Center latitude in WGS84. For topographic/orthophoto maps'),
-  longitude: z.number().optional().describe('Center longitude in WGS84. For topographic/orthophoto maps'),
-  // Bounding box for property maps
-  minX: z.number().optional().describe('Bbox minimum easting. For property maps'),
-  minY: z.number().optional().describe('Bbox minimum northing. For property maps'),
-  maxX: z.number().optional().describe('Bbox maximum easting. For property maps'),
-  maxY: z.number().optional().describe('Bbox maximum northing. For property maps'),
+  // Center point for topographic/orthophoto (WGS84)
+  latitude: z.number().optional().describe('Center latitude (WGS84). Stockholm ~59.33. For topographic/orthophoto maps'),
+  longitude: z.number().optional().describe('Center longitude (WGS84). Stockholm ~18.07. For topographic/orthophoto maps'),
+  // Bounding box for property maps (WGS84)
+  minLat: z.number().optional().describe('Bbox minimum latitude (WGS84). For property maps'),
+  minLon: z.number().optional().describe('Bbox minimum longitude (WGS84). For property maps'),
+  maxLat: z.number().optional().describe('Bbox maximum latitude (WGS84). For property maps'),
+  maxLon: z.number().optional().describe('Bbox maximum longitude (WGS84). For property maps'),
   // Size options
   width: z
     .number()
@@ -45,21 +43,20 @@ export const mapUrlTool = {
     'Generate map URLs for Swedish geodata. ' +
     'Topographic and orthophoto maps use open CC-BY WMTS (no auth). ' +
     'Property boundaries use WMS. ' +
-    'For topographic/orthophoto: provide center point and dimensions. ' +
-    'For property: provide bounding box.',
+    'For topographic/orthophoto: provide center point (latitude, longitude) and dimensions. ' +
+    'For property: provide bounding box (minLat, minLon, maxLat, maxLon). ' +
+    'All coordinates in WGS84.',
   inputSchema: mapUrlInputSchema,
 };
 
 type MapUrlInput = {
   mapType: MapType;
-  x?: number;
-  y?: number;
   latitude?: number;
   longitude?: number;
-  minX?: number;
-  minY?: number;
-  maxX?: number;
-  maxY?: number;
+  minLat?: number;
+  minLon?: number;
+  maxLat?: number;
+  maxLon?: number;
   width?: number;
   height?: number;
 };
@@ -69,21 +66,12 @@ export const mapUrlHandler = withErrorHandling(async (args: MapUrlInput) => {
 
   switch (mapType) {
     case 'topographic': {
-      if ((args.x === undefined || args.y === undefined) && (args.latitude === undefined || args.longitude === undefined)) {
-        throw new ValidationError(
-          'For topographic map, provide center point as (x, y) or (latitude, longitude)',
-          'coordinates',
-        );
+      if (args.latitude === undefined || args.longitude === undefined) {
+        throw new ValidationError('For topographic map, provide center point as latitude and longitude (WGS84)', 'coordinates');
       }
 
-      const point = normalizeToSweref99({
-        x: args.x,
-        y: args.y,
-        latitude: args.latitude,
-        longitude: args.longitude,
-      });
-
-      const result = lantmaterietClient.getTopographicMapUrl(point, { width, height });
+      const sweref99Point = wgs84ToSweref99({ latitude: args.latitude, longitude: args.longitude });
+      const result = lantmaterietClient.getTopographicMapUrl(sweref99Point, { width, height });
 
       return {
         map_type: 'topographic',
@@ -91,7 +79,7 @@ export const mapUrlHandler = withErrorHandling(async (args: MapUrlInput) => {
         url_template_note: 'WMTS URL template - replace {z}/{y}/{x} with tile coordinates',
         layers: result.layers,
         crs: result.crs,
-        center: { x: point.x, y: point.y },
+        center: { latitude: args.latitude, longitude: args.longitude },
         bbox: result.bbox,
         license: 'CC-BY 4.0 Lantmäteriet',
         auth_required: false,
@@ -99,18 +87,12 @@ export const mapUrlHandler = withErrorHandling(async (args: MapUrlInput) => {
     }
 
     case 'orthophoto': {
-      if ((args.x === undefined || args.y === undefined) && (args.latitude === undefined || args.longitude === undefined)) {
-        throw new ValidationError('For orthophoto map, provide center point as (x, y) or (latitude, longitude)', 'coordinates');
+      if (args.latitude === undefined || args.longitude === undefined) {
+        throw new ValidationError('For orthophoto map, provide center point as latitude and longitude (WGS84)', 'coordinates');
       }
 
-      const point = normalizeToSweref99({
-        x: args.x,
-        y: args.y,
-        latitude: args.latitude,
-        longitude: args.longitude,
-      });
-
-      const result = lantmaterietClient.getOrthophotoMapUrl(point, { width, height });
+      const sweref99Point = wgs84ToSweref99({ latitude: args.latitude, longitude: args.longitude });
+      const result = lantmaterietClient.getOrthophotoMapUrl(sweref99Point, { width, height });
 
       return {
         map_type: 'orthophoto',
@@ -118,7 +100,7 @@ export const mapUrlHandler = withErrorHandling(async (args: MapUrlInput) => {
         url_template_note: 'WMTS URL template - replace {z}/{y}/{x} with tile coordinates',
         layers: result.layers,
         crs: result.crs,
-        center: { x: point.x, y: point.y },
+        center: { latitude: args.latitude, longitude: args.longitude },
         bbox: result.bbox,
         license: 'CC-BY 4.0 Lantmäteriet',
         auth_required: false,
@@ -126,20 +108,20 @@ export const mapUrlHandler = withErrorHandling(async (args: MapUrlInput) => {
     }
 
     case 'property': {
-      if (args.minX === undefined || args.minY === undefined || args.maxX === undefined || args.maxY === undefined) {
-        throw new ValidationError('For property map, provide bounding box as minX, minY, maxX, maxY in SWEREF99TM', 'bbox');
+      if (args.minLat === undefined || args.minLon === undefined || args.maxLat === undefined || args.maxLon === undefined) {
+        throw new ValidationError('For property map, provide bounding box as minLat, minLon, maxLat, maxLon (WGS84)', 'bbox');
       }
 
-      const bbox = {
-        minX: args.minX,
-        minY: args.minY,
-        maxX: args.maxX,
-        maxY: args.maxY,
-      };
+      const sweref99Bbox = wgs84BboxToSweref99({
+        minLat: args.minLat,
+        minLon: args.minLon,
+        maxLat: args.maxLat,
+        maxLon: args.maxLon,
+      });
 
-      validateBbox(bbox);
+      validateBbox(sweref99Bbox);
 
-      const result = lantmaterietClient.getPropertyMapUrl(bbox, {
+      const result = lantmaterietClient.getPropertyMapUrl(sweref99Bbox, {
         width: Math.min(width, 2048), // Limit max size
         height: Math.min(height, 2048),
       });
@@ -149,7 +131,8 @@ export const mapUrlHandler = withErrorHandling(async (args: MapUrlInput) => {
         url: result.url,
         layers: result.layers,
         crs: result.crs,
-        bbox: result.bbox,
+        input_bbox: { minLat: args.minLat, minLon: args.minLon, maxLat: args.maxLat, maxLon: args.maxLon },
+        internal_bbox: result.bbox,
         image_size: { width: Math.min(width, 2048), height: Math.min(height, 2048) },
         format: 'image/png',
         auth_required: false,

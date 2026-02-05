@@ -14,7 +14,7 @@ export const CRS_WGS84 = 'EPSG:4326';
 proj4.defs('EPSG:3006', '+proj=utm +zone=33 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs +type=crs');
 
 /**
- * Point in SWEREF99TM coordinates
+ * Point in SWEREF99TM coordinates (internal format)
  */
 export interface Sweref99Point {
   x: number; // Easting
@@ -22,7 +22,7 @@ export interface Sweref99Point {
 }
 
 /**
- * Point in WGS84 coordinates
+ * Point in WGS84 coordinates (input format)
  */
 export interface Wgs84Point {
   latitude: number;
@@ -30,13 +30,23 @@ export interface Wgs84Point {
 }
 
 /**
- * Bounding box in SWEREF99TM coordinates
+ * Bounding box in SWEREF99TM coordinates (internal format)
  */
 export interface BoundingBox {
   minX: number;
   minY: number;
   maxX: number;
   maxY: number;
+}
+
+/**
+ * Bounding box in WGS84 coordinates (input format)
+ */
+export interface Wgs84Bbox {
+  minLat: number;
+  minLon: number;
+  maxLat: number;
+  maxLon: number;
 }
 
 /**
@@ -86,7 +96,7 @@ export function isValidWgs84Coordinate(latitude: number, longitude: number): boo
 export function wgs84ToSweref99(point: Wgs84Point): Sweref99Point {
   if (!isValidWgs84Coordinate(point.latitude, point.longitude)) {
     throw new ValidationError(
-      `WGS84 coordinates (${point.latitude}, ${point.longitude}) are outside valid range for Sweden`,
+      `WGS84 coordinates (${point.latitude}, ${point.longitude}) are outside valid range for Sweden (55-69°N, 11-24°E)`,
       'coordinates',
     );
   }
@@ -121,16 +131,7 @@ export function sweref99ToWgs84(point: Sweref99Point): Wgs84Point {
 }
 
 /**
- * Validate a SWEREF99TM point
- */
-export function validateSweref99Point(point: Sweref99Point): void {
-  if (!isValidSweref99Coordinate(point.x, point.y)) {
-    throw new ValidationError(`SWEREF99TM coordinates (${point.x}, ${point.y}) are outside valid range for Sweden`, 'point');
-  }
-}
-
-/**
- * Validate a bounding box
+ * Validate a SWEREF99TM bounding box
  */
 export function validateBbox(bbox: BoundingBox): void {
   if (bbox.minX >= bbox.maxX) {
@@ -148,23 +149,37 @@ export function validateBbox(bbox: BoundingBox): void {
 }
 
 /**
- * Normalize input coordinates to SWEREF99TM
- * Accepts either SWEREF99 (x, y) or WGS84 (latitude, longitude)
+ * Convert WGS84 bounding box to SWEREF99TM
  */
-export function normalizeToSweref99(input: { x?: number; y?: number; latitude?: number; longitude?: number }): Sweref99Point {
-  // If both SWEREF99 and WGS84 coordinates provided, prefer SWEREF99
-  if (input.x !== undefined && input.y !== undefined) {
-    const point = { x: input.x, y: input.y };
-    validateSweref99Point(point);
-    return point;
+export function wgs84BboxToSweref99(bbox: Wgs84Bbox): BoundingBox {
+  // Validate all corners
+  if (!isValidWgs84Coordinate(bbox.minLat, bbox.minLon)) {
+    throw new ValidationError(
+      `WGS84 coordinates (${bbox.minLat}, ${bbox.minLon}) are outside valid range for Sweden (55-69°N, 11-24°E)`,
+      'bbox',
+    );
+  }
+  if (!isValidWgs84Coordinate(bbox.maxLat, bbox.maxLon)) {
+    throw new ValidationError(
+      `WGS84 coordinates (${bbox.maxLat}, ${bbox.maxLon}) are outside valid range for Sweden (55-69°N, 11-24°E)`,
+      'bbox',
+    );
+  }
+  if (bbox.minLat >= bbox.maxLat) {
+    throw new ValidationError('minLat must be less than maxLat', 'bbox');
+  }
+  if (bbox.minLon >= bbox.maxLon) {
+    throw new ValidationError('minLon must be less than maxLon', 'bbox');
   }
 
-  if (input.latitude !== undefined && input.longitude !== undefined) {
-    return wgs84ToSweref99({ latitude: input.latitude, longitude: input.longitude });
-  }
+  // Convert corners
+  const minCorner = wgs84ToSweref99({ latitude: bbox.minLat, longitude: bbox.minLon });
+  const maxCorner = wgs84ToSweref99({ latitude: bbox.maxLat, longitude: bbox.maxLon });
 
-  throw new ValidationError(
-    'Either (x, y) SWEREF99TM coordinates or (latitude, longitude) WGS84 coordinates are required',
-    'coordinates',
-  );
+  return {
+    minX: minCorner.x,
+    minY: minCorner.y,
+    maxX: maxCorner.x,
+    maxY: maxCorner.y,
+  };
 }

@@ -54,17 +54,21 @@ Free datasets available (Feb 2025+):
 - **Hydrografi** - Hydrography
 - **Administrativ indelning** - Administrative boundaries
 
-## Coordinate Systems
+## Coordinate System
 
-**Input accepts both:**
+**Input:** WGS84 (EPSG:4326) - latitude/longitude
+**Internal:** SWEREF99TM (EPSG:3006) - converted automatically
 
-- SWEREF99 TM (EPSG:3006) - Native Swedish format
-- WGS84 (EPSG:4326) - GPS/map coordinates (auto-converted)
+### WGS84 Input Examples
 
-**Examples:**
+| City       | latitude | longitude |
+| ---------- | -------- | --------- |
+| Stockholm  | 59.33    | 18.07     |
+| Gothenburg | 57.71    | 11.97     |
+| Malmo      | 55.61    | 13.00     |
+| Kiruna     | 67.86    | 20.23     |
 
-- Stockholm SWEREF99: `X: 674000, Y: 6580000`
-- Stockholm WGS84: `latitude: 59.33, longitude: 18.07`
+**Valid range for Sweden:** 55-69°N, 11-24°E
 
 ## Environment Variables
 

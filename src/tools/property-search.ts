@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { lantmaterietClient } from '@/clients/lantmateriet-client';
 import { withErrorHandling } from '@/lib/response';
-import { normalizeToSweref99, CRS_SWEREF99TM, CRS_WGS84 } from '@/lib/coordinates';
+import { wgs84ToSweref99, CRS_WGS84 } from '@/lib/coordinates';
 import { ValidationError } from '@/lib/errors';
 
 /**
@@ -16,17 +16,9 @@ export const propertySearchInputSchema = {
     .describe(
       'Search method: "coordinate" (find by location), "address" (find by street address), "designation" (find by property name like "STOCKHOLM VASASTADEN 1:1")',
     ),
-  // For coordinate queries
-  x: z.number().optional().describe('Easting in SWEREF99TM (EPSG:3006). Stockholm ~674000. Use with queryType="coordinate"'),
-  y: z.number().optional().describe('Northing in SWEREF99TM (EPSG:3006). Stockholm ~6580000. Use with queryType="coordinate"'),
-  latitude: z
-    .number()
-    .optional()
-    .describe('WGS84 latitude (auto-converts to SWEREF99). Stockholm ~59.33. Use with queryType="coordinate"'),
-  longitude: z
-    .number()
-    .optional()
-    .describe('WGS84 longitude (auto-converts to SWEREF99). Stockholm ~18.07. Use with queryType="coordinate"'),
+  // For coordinate queries (WGS84)
+  latitude: z.number().optional().describe('Latitude (WGS84). Stockholm ~59.33. Use with queryType="coordinate"'),
+  longitude: z.number().optional().describe('Longitude (WGS84). Stockholm ~18.07. Use with queryType="coordinate"'),
   // For address queries
   address: z
     .string()
@@ -44,15 +36,13 @@ export const propertySearchTool = {
   description:
     'Find Swedish properties by coordinate, address, or official designation. ' +
     'Returns property boundaries, designation, municipality, and county. ' +
-    'For coordinate queries, accepts both SWEREF99TM (x,y) or WGS84 (lat,lon). ' +
+    'For coordinate queries, use WGS84 (latitude/longitude). ' +
     'Requires Lantmäteriet API credentials for authenticated access.',
   inputSchema: propertySearchInputSchema,
 };
 
 type PropertySearchInput = {
   queryType: QueryType;
-  x?: number;
-  y?: number;
   latitude?: number;
   longitude?: number;
   address?: string;
@@ -65,30 +55,21 @@ export const propertySearchHandler = withErrorHandling(async (args: PropertySear
   switch (queryType) {
     case 'coordinate': {
       // Validate that we have coordinates
-      if ((args.x === undefined || args.y === undefined) && (args.latitude === undefined || args.longitude === undefined)) {
-        throw new ValidationError(
-          'For coordinate query, provide either (x, y) SWEREF99TM or (latitude, longitude) WGS84 coordinates',
-          'coordinates',
-        );
+      if (args.latitude === undefined || args.longitude === undefined) {
+        throw new ValidationError('For coordinate query, provide latitude and longitude (WGS84)', 'coordinates');
       }
 
-      const point = normalizeToSweref99({
-        x: args.x,
-        y: args.y,
-        latitude: args.latitude,
-        longitude: args.longitude,
-      });
+      // Convert WGS84 to SWEREF99TM for upstream API
+      const sweref99Point = wgs84ToSweref99({ latitude: args.latitude, longitude: args.longitude });
 
-      const result = await lantmaterietClient.findPropertyByPoint(point);
+      const result = await lantmaterietClient.findPropertyByPoint(sweref99Point);
 
       return {
         query_type: 'coordinate',
-        input_coordinate_system: args.x !== undefined ? CRS_SWEREF99TM : CRS_WGS84,
+        coordinate_system: CRS_WGS84,
         search_coordinate: {
-          sweref99tm: point,
-          ...(args.latitude !== undefined && {
-            wgs84: { latitude: args.latitude, longitude: args.longitude },
-          }),
+          latitude: args.latitude,
+          longitude: args.longitude,
         },
         result,
         note:

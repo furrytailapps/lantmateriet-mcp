@@ -1,14 +1,11 @@
 import { z } from 'zod';
 import { lantmaterietClient } from '@/clients/lantmateriet-client';
 import { withErrorHandling } from '@/lib/response';
-import { normalizeToSweref99, CRS_SWEREF99TM, CRS_WGS84 } from '@/lib/coordinates';
-import { ValidationError } from '@/lib/errors';
+import { wgs84ToSweref99, CRS_WGS84 } from '@/lib/coordinates';
 
 export const elevationInputSchema = {
-  x: z.number().optional().describe('Easting in SWEREF99TM (EPSG:3006). Stockholm ~674000'),
-  y: z.number().optional().describe('Northing in SWEREF99TM (EPSG:3006). Stockholm ~6580000'),
-  latitude: z.number().optional().describe('WGS84 latitude (auto-converts to SWEREF99). Stockholm ~59.33'),
-  longitude: z.number().optional().describe('WGS84 longitude (auto-converts to SWEREF99). Stockholm ~18.07'),
+  latitude: z.number().describe('Latitude (WGS84). Stockholm ~59.33, Gothenburg ~57.71, Malmo ~55.61'),
+  longitude: z.number().describe('Longitude (WGS84). Stockholm ~18.07, Gothenburg ~11.97, Malmo ~13.00'),
 };
 
 export const elevationTool = {
@@ -16,42 +13,29 @@ export const elevationTool = {
   description:
     'Get terrain elevation (height above sea level) at a specific coordinate in Sweden. ' +
     'Returns height in meters using RH 2000 reference system. ' +
-    'Accepts both SWEREF99TM (x,y) or WGS84 (lat,lon) coordinates. ' +
+    'Coordinates in WGS84 (latitude/longitude). ' +
     'Requires Lantmäteriet API credentials for authenticated access.',
   inputSchema: elevationInputSchema,
 };
 
 type ElevationInput = {
-  x?: number;
-  y?: number;
-  latitude?: number;
-  longitude?: number;
+  latitude: number;
+  longitude: number;
 };
 
 export const elevationHandler = withErrorHandling(async (args: ElevationInput) => {
-  // Validate that we have coordinates
-  if ((args.x === undefined || args.y === undefined) && (args.latitude === undefined || args.longitude === undefined)) {
-    throw new ValidationError('Provide either (x, y) SWEREF99TM or (latitude, longitude) WGS84 coordinates', 'coordinates');
-  }
+  // Convert WGS84 to SWEREF99TM for upstream API
+  const sweref99Point = wgs84ToSweref99({ latitude: args.latitude, longitude: args.longitude });
 
-  const point = normalizeToSweref99({
-    x: args.x,
-    y: args.y,
-    latitude: args.latitude,
-    longitude: args.longitude,
-  });
-
-  const result = await lantmaterietClient.getElevation(point);
+  const result = await lantmaterietClient.getElevation(sweref99Point);
 
   return {
     elevation_meters: result.elevation,
     reference_system: result.referenceSystem,
-    input_coordinate_system: args.x !== undefined ? CRS_SWEREF99TM : CRS_WGS84,
+    coordinate_system: CRS_WGS84,
     coordinate: {
-      sweref99tm: { x: point.x, y: point.y },
-      ...(args.latitude !== undefined && {
-        wgs84: { latitude: args.latitude, longitude: args.longitude },
-      }),
+      latitude: args.latitude,
+      longitude: args.longitude,
     },
   };
 });
