@@ -43,8 +43,13 @@ async function authenticatedFetch<T>(url: string, options: RequestInit = {}): Pr
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new UpstreamApiError(`Lantmäteriet API error: ${errorText}`, response.status, 'Lantmäteriet');
+    const msg =
+      response.status >= 500
+        ? `The data service returned an error (HTTP ${response.status}). This is usually temporary — try again.`
+        : response.status === 401 || response.status === 403
+          ? 'Authentication with the data service failed. This may be a temporary issue — try again.'
+          : `The data service rejected the request (HTTP ${response.status}). The query parameters may be invalid.`;
+    throw new UpstreamApiError(msg, response.status, 'Lantmäteriet');
   }
 
   return response.json() as Promise<T>;
@@ -364,8 +369,11 @@ export const lantmaterietClient = {
     }
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new UpstreamApiError(`STAC API error: ${errorText}`, response.status, 'Lantmäteriet STAC');
+      const msg =
+        response.status >= 500
+          ? `The data service returned an error (HTTP ${response.status}). This is usually temporary — try again.`
+          : `The data service rejected the request (HTTP ${response.status}). The query parameters may be invalid.`;
+      throw new UpstreamApiError(msg, response.status, 'Lantmäteriet STAC');
     }
 
     const data = (await response.json()) as StacSearchResponse;

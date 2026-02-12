@@ -75,9 +75,8 @@ async function fetchNewToken(): Promise<CachedToken> {
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
     throw new UpstreamApiError(
-      `Failed to obtain Lantmäteriet OAuth2 token: ${errorText}`,
+      'Authentication with the data service failed. This may be a temporary issue — try again.',
       response.status,
       'Lantmäteriet OAuth2',
     );
