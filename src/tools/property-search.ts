@@ -35,7 +35,7 @@ export const propertySearchTool = {
   name: 'lm_property_search',
   description:
     'Find Swedish properties by coordinate, address, or official designation. ' +
-    'Returns property boundaries, designation, municipality, and county. ' +
+    'Returns property boundaries as WGS84 geometry, designation, municipality, and county. ' +
     'For coordinate queries, use WGS84 (latitude/longitude). ' +
     'Requires Lantmäteriet API credentials for authenticated access.',
   inputSchema: propertySearchInputSchema,
