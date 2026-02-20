@@ -1,10 +1,3 @@
-/**
- * Types for Lantmäteriet API responses
- */
-
-/**
- * Property (Fastighet) information
- */
 export interface PropertyInfo {
   objektidentitet: string;
   beteckning: string; // Property designation e.g. "STOCKHOLM VASASTADEN 1:1"
@@ -14,17 +7,11 @@ export interface PropertyInfo {
   geometry?: GeoJsonGeometry;
 }
 
-/**
- * Property search result
- */
 export interface PropertySearchResult {
   properties: PropertyInfo[];
   totalCount: number;
 }
 
-/**
- * Elevation point result
- */
 export interface ElevationResult {
   elevation: number; // Height in meters (RH 2000)
   referenceSystem: string;
@@ -35,9 +22,6 @@ export interface ElevationResult {
   };
 }
 
-/**
- * Map URL result
- */
 export interface MapUrlResult {
   url: string;
   layers: string[];
@@ -50,17 +34,11 @@ export interface MapUrlResult {
   };
 }
 
-/**
- * GeoJSON geometry (simplified)
- */
 export interface GeoJsonGeometry {
   type: 'Point' | 'Polygon' | 'MultiPolygon' | 'LineString';
   coordinates: number[] | number[][] | number[][][] | number[][][][];
 }
 
-/**
- * Address search result
- */
 export interface AddressResult {
   adress: string;
   postnummer: string;
@@ -74,18 +52,12 @@ export interface AddressResult {
   };
 }
 
-/**
- * Lantmäteriet API error response
- */
 export interface LantmaterietApiError {
   error: string;
   error_description?: string;
   status?: number;
 }
 
-/**
- * STAC Item Asset
- */
 export interface StacAsset {
   href: string;
   type?: string;
@@ -93,9 +65,6 @@ export interface StacAsset {
   roles?: string[];
 }
 
-/**
- * STAC Item from Lantmäteriet STAC API
- */
 export interface StacItem {
   id: string;
   type: 'Feature';
@@ -120,9 +89,6 @@ export interface StacItem {
   }>;
 }
 
-/**
- * STAC Search Response
- */
 export interface StacSearchResponse {
   type: 'FeatureCollection';
   features: StacItem[];
@@ -135,9 +101,6 @@ export interface StacSearchResponse {
   }>;
 }
 
-/**
- * Simplified STAC item for tool output
- */
 export interface StacSearchResultItem {
   id: string;
   datetime: string;

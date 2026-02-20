@@ -4,9 +4,6 @@ import { withErrorHandling } from '@/lib/response';
 import { wgs84ToSweref99, CRS_WGS84 } from '@/lib/coordinates';
 import { ValidationError } from '@/lib/errors';
 
-/**
- * Query types for property search
- */
 const QUERY_TYPES = ['coordinate', 'address', 'designation'] as const;
 type QueryType = (typeof QUERY_TYPES)[number];
 
@@ -16,15 +13,12 @@ export const propertySearchInputSchema = {
     .describe(
       'Search method: "coordinate" (find by location), "address" (find by street address), "designation" (find by property name like "STOCKHOLM VASASTADEN 1:1")',
     ),
-  // For coordinate queries (WGS84)
   latitude: z.number().optional().describe('Latitude (WGS84). Stockholm ~59.33. Use with queryType="coordinate"'),
   longitude: z.number().optional().describe('Longitude (WGS84). Stockholm ~18.07. Use with queryType="coordinate"'),
-  // For address queries
   address: z
     .string()
     .optional()
     .describe('Street address to search, e.g. "Drottninggatan 1, Stockholm". Use with queryType="address"'),
-  // For designation queries
   designation: z
     .string()
     .optional()
@@ -54,12 +48,10 @@ export const propertySearchHandler = withErrorHandling(async (args: PropertySear
 
   switch (queryType) {
     case 'coordinate': {
-      // Validate that we have coordinates
       if (args.latitude === undefined || args.longitude === undefined) {
         throw new ValidationError('For coordinate query, provide latitude and longitude (WGS84)', 'coordinates');
       }
 
-      // Convert WGS84 to SWEREF99TM for upstream API
       const sweref99Point = wgs84ToSweref99({ latitude: args.latitude, longitude: args.longitude });
 
       const result = await lantmaterietClient.findPropertyByPoint(sweref99Point);

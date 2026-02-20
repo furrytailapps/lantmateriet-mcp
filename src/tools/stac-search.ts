@@ -4,23 +4,16 @@ import { ValidationError } from '@/lib/errors';
 import { lantmaterietClient } from '@/clients/lantmateriet-client';
 import { wgs84ToSweref99, wgs84BboxToSweref99, sweref99BboxToWgs84, validateBbox, type BoundingBox, CRS_WGS84 } from '@/lib/coordinates';
 
-/**
- * Input schema for STAC search tool
- * Supports either bounding box OR center point + radius (all WGS84)
- */
 export const stacSearchInputSchema = {
-  // Option 1: Bounding box (WGS84)
   minLat: z.number().optional().describe('Min latitude (WGS84). e.g., 59.30'),
   minLon: z.number().optional().describe('Min longitude (WGS84). e.g., 18.00'),
   maxLat: z.number().optional().describe('Max latitude (WGS84). e.g., 59.35'),
   maxLon: z.number().optional().describe('Max longitude (WGS84). e.g., 18.10'),
 
-  // Option 2: Center point + radius (WGS84)
   latitude: z.number().optional().describe('Center latitude (WGS84). e.g., 59.33'),
   longitude: z.number().optional().describe('Center longitude (WGS84). e.g., 18.07'),
   radius: z.number().optional().default(500).describe('Search radius in meters (default: 500)'),
 
-  // Filters
   collection: z
     .enum(['ortofoto', 'hojd'])
     .optional()
@@ -51,11 +44,7 @@ type StacSearchInput = {
   maxResults?: number;
 };
 
-/**
- * Build bounding box from WGS84 input parameters, convert to SWEREF99TM
- */
 function buildBbox(input: StacSearchInput): BoundingBox {
-  // Option 1: Explicit bounding box (WGS84)
   if (input.minLat !== undefined && input.minLon !== undefined && input.maxLat !== undefined && input.maxLon !== undefined) {
     const bbox = wgs84BboxToSweref99({
       minLat: input.minLat,
@@ -67,7 +56,6 @@ function buildBbox(input: StacSearchInput): BoundingBox {
     return bbox;
   }
 
-  // Option 2: Center point + radius (WGS84)
   if (input.latitude !== undefined && input.longitude !== undefined) {
     const center = wgs84ToSweref99({ latitude: input.latitude, longitude: input.longitude });
     const radius = input.radius || 500;
@@ -95,7 +83,6 @@ export const stacSearchHandler = withErrorHandling(async (args: StacSearchInput)
 
   const items = await lantmaterietClient.searchStac(bbox, collection, maxResults);
 
-  // Convert internal SWEREF99TM bbox to WGS84 for agent consumption
   const wgs84Bbox = sweref99BboxToWgs84(bbox);
 
   return {

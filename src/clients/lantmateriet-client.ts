@@ -11,9 +11,6 @@ import type {
 } from '@/types/lantmateriet';
 import { Sweref99Point, BoundingBox, CRS_SWEREF99TM } from '@/lib/coordinates';
 
-/**
- * Lantmäteriet API base URLs
- */
 const API_BASE_URL = process.env.LANTMATERIET_API_URL || 'https://api.lantmateriet.se';
 
 // Open data WMTS endpoints (CC-BY, no auth required)
@@ -27,9 +24,6 @@ const PROPERTY_WMS = 'https://api.lantmateriet.se/open/fastighet/v1/wms';
 const STAC_ORTO_URL = 'https://api.lantmateriet.se/stac-orto/v1';
 const STAC_HOJD_URL = 'https://api.lantmateriet.se/stac-hojd/v1';
 
-/**
- * Make authenticated request to Lantmäteriet API
- */
 async function authenticatedFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
   const token = await getAccessToken();
 
@@ -55,21 +49,11 @@ async function authenticatedFetch<T>(url: string, options: RequestInit = {}): Pr
   return response.json() as Promise<T>;
 }
 
-/**
- * Lantmäteriet API client
- */
 export const lantmaterietClient = {
-  /**
-   * Check if authenticated APIs are available
-   */
   isAuthConfigured(): boolean {
     return hasCredentials();
   },
 
-  /**
-   * Find property by coordinate
-   * Uses the Fastighetsindelning API
-   */
   async findPropertyByPoint(point: Sweref99Point): Promise<PropertySearchResult> {
     if (!hasCredentials()) {
       throw new ConfigurationError(
@@ -113,10 +97,7 @@ export const lantmaterietClient = {
     }
   },
 
-  /**
-   * Find property by address
-   * Uses the Adress API to geocode, then looks up property
-   */
+  // Geocodes via Adress API, then looks up property by resulting coordinate
   async findPropertyByAddress(address: string): Promise<PropertySearchResult> {
     if (!hasCredentials()) {
       throw new ConfigurationError(
@@ -126,7 +107,6 @@ export const lantmaterietClient = {
       );
     }
 
-    // First, geocode the address
     const geocodeUrl = `${API_BASE_URL}/adress/v1/sok?adress=${encodeURIComponent(address)}`;
 
     try {
@@ -143,13 +123,11 @@ export const lantmaterietClient = {
         return { properties: [], totalCount: 0 };
       }
 
-      // Get the first address match
       const firstMatch = addressResults.features[0];
       if (!firstMatch.geometry?.coordinates) {
         return { properties: [], totalCount: 0 };
       }
 
-      // Use the coordinate to find the property
       const [x, y] = firstMatch.geometry.coordinates;
       return this.findPropertyByPoint({ x, y });
     } catch (error) {
@@ -160,9 +138,6 @@ export const lantmaterietClient = {
     }
   },
 
-  /**
-   * Find property by designation (beteckning)
-   */
   async findPropertyByDesignation(designation: string): Promise<PropertyInfo | null> {
     if (!hasCredentials()) {
       throw new ConfigurationError(
@@ -208,10 +183,6 @@ export const lantmaterietClient = {
     }
   },
 
-  /**
-   * Get elevation at a point
-   * Uses the Höjddata API
-   */
   async getElevation(point: Sweref99Point): Promise<ElevationResult> {
     if (!hasCredentials()) {
       throw new ConfigurationError(
@@ -239,10 +210,7 @@ export const lantmaterietClient = {
     };
   },
 
-  /**
-   * Generate topographic map WMTS URL
-   * Uses open CC-BY data (no auth required)
-   */
+  // Open CC-BY data (no auth required)
   getTopographicMapUrl(point: Sweref99Point, options: { width?: number; height?: number; zoom?: number } = {}): MapUrlResult {
     const { width = 1000, height = 1000, zoom = 10 } = options;
 
@@ -250,7 +218,6 @@ export const lantmaterietClient = {
     // Clients can use this with their preferred tiling scheme
     const url = `${OPEN_TOPOWEBB_WMTS}/topowebb/default/3006/{z}/{y}/{x}.png`;
 
-    // Calculate approximate bbox for the given dimensions
     const halfWidth = width / 2;
     const halfHeight = height / 2;
     const bbox: BoundingBox = {
@@ -268,10 +235,7 @@ export const lantmaterietClient = {
     };
   },
 
-  /**
-   * Generate orthophoto (aerial imagery) WMTS URL
-   * Uses open CC-BY data (no auth required)
-   */
+  // Open CC-BY data (no auth required)
   getOrthophotoMapUrl(point: Sweref99Point, options: { width?: number; height?: number } = {}): MapUrlResult {
     const { width = 1000, height = 1000 } = options;
 
@@ -294,9 +258,6 @@ export const lantmaterietClient = {
     };
   },
 
-  /**
-   * Generate property boundaries WMS URL
-   */
   getPropertyMapUrl(
     bbox: BoundingBox,
     options: { width?: number; height?: number; format?: 'png' | 'jpeg' } = {},
@@ -324,10 +285,6 @@ export const lantmaterietClient = {
     };
   },
 
-  /**
-   * Search STAC catalog for ortofoto or elevation data
-   * Uses the free STAC API (CC-BY 4.0)
-   */
   async searchStac(
     bbox: BoundingBox,
     collection: 'ortofoto' | 'hojd',
@@ -378,16 +335,12 @@ export const lantmaterietClient = {
 
     const data = (await response.json()) as StacSearchResponse;
 
-    // Transform STAC items to simplified output
     return data.features.map((item) => {
-      // Extract band names from eo:bands if available
       const bands = item.properties['eo:bands']?.map((b) => b.common_name || b.name) || [];
 
-      // Find download URL (usually 'data' or 'visual' asset)
       const dataAsset = item.assets['data'] || item.assets['visual'] || Object.values(item.assets)[0];
       const downloadUrl = dataAsset?.href;
 
-      // Find thumbnail if available
       const thumbnailAsset = item.assets['thumbnail'] || item.assets['preview'];
       const thumbnailUrl = thumbnailAsset?.href;
 

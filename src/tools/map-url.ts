@@ -4,9 +4,6 @@ import { withErrorHandling } from '@/lib/response';
 import { wgs84ToSweref99, wgs84BboxToSweref99, sweref99BboxToWgs84, validateBbox, CRS_WGS84 } from '@/lib/coordinates';
 import { ValidationError } from '@/lib/errors';
 
-/**
- * Map types available
- */
 const MAP_TYPES = ['topographic', 'orthophoto', 'property'] as const;
 type MapType = (typeof MAP_TYPES)[number];
 
@@ -16,15 +13,12 @@ export const mapUrlInputSchema = {
     .describe(
       'Map type: "topographic" (terrain with roads/labels), "orthophoto" (aerial imagery), "property" (property boundaries)',
     ),
-  // Center point for topographic/orthophoto (WGS84)
   latitude: z.number().optional().describe('Center latitude (WGS84). Stockholm ~59.33. For topographic/orthophoto maps'),
   longitude: z.number().optional().describe('Center longitude (WGS84). Stockholm ~18.07. For topographic/orthophoto maps'),
-  // Bounding box for property maps (WGS84)
   minLat: z.number().optional().describe('Bbox minimum latitude (WGS84). For property maps'),
   minLon: z.number().optional().describe('Bbox minimum longitude (WGS84). For property maps'),
   maxLat: z.number().optional().describe('Bbox maximum latitude (WGS84). For property maps'),
   maxLon: z.number().optional().describe('Bbox maximum longitude (WGS84). For property maps'),
-  // Size options
   width: z
     .number()
     .optional()
@@ -73,7 +67,6 @@ export const mapUrlHandler = withErrorHandling(async (args: MapUrlInput) => {
       const sweref99Point = wgs84ToSweref99({ latitude: args.latitude, longitude: args.longitude });
       const result = lantmaterietClient.getTopographicMapUrl(sweref99Point, { width, height });
 
-      // Convert bbox from SWEREF99TM to WGS84 for agent consumption
       const wgs84Bbox = result.bbox ? sweref99BboxToWgs84(result.bbox) : undefined;
 
       return {
@@ -97,7 +90,6 @@ export const mapUrlHandler = withErrorHandling(async (args: MapUrlInput) => {
       const sweref99Point = wgs84ToSweref99({ latitude: args.latitude, longitude: args.longitude });
       const result = lantmaterietClient.getOrthophotoMapUrl(sweref99Point, { width, height });
 
-      // Convert bbox from SWEREF99TM to WGS84 for agent consumption
       const wgs84Bbox = result.bbox ? sweref99BboxToWgs84(result.bbox) : undefined;
 
       return {

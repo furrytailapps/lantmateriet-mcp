@@ -24,7 +24,6 @@ type ElevationInput = {
 };
 
 export const elevationHandler = withErrorHandling(async (args: ElevationInput) => {
-  // Convert WGS84 to SWEREF99TM for upstream API
   const sweref99Point = wgs84ToSweref99({ latitude: args.latitude, longitude: args.longitude });
 
   const result = await lantmaterietClient.getElevation(sweref99Point);
