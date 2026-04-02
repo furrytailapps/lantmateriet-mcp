@@ -15,10 +15,11 @@ export const mapUrlInputSchema = {
     ),
   latitude: z.number().optional().describe('Center latitude (WGS84). Stockholm ~59.33. For topographic/orthophoto maps'),
   longitude: z.number().optional().describe('Center longitude (WGS84). Stockholm ~18.07. For topographic/orthophoto maps'),
-  minLat: z.number().optional().describe('Bbox minimum latitude (WGS84). For property maps'),
-  minLon: z.number().optional().describe('Bbox minimum longitude (WGS84). For property maps'),
+  minLat: z.number().optional().describe('Bbox minimum latitude (WGS84). Can equal maxLat for point queries. For property maps'),
+  minLon: z.number().optional().describe('Bbox minimum longitude (WGS84). Can equal maxLon for point queries. For property maps'),
   maxLat: z.number().optional().describe('Bbox maximum latitude (WGS84). For property maps'),
   maxLon: z.number().optional().describe('Bbox maximum longitude (WGS84). For property maps'),
+  bufferMeters: z.number().optional().describe('Buffer around bbox edges in meters (default: 200). For property maps'),
   width: z
     .number()
     .optional()
@@ -39,6 +40,8 @@ export const mapUrlTool = {
     'Property boundaries use WMS. ' +
     'For topographic/orthophoto: provide center point (latitude, longitude) and dimensions. ' +
     'For property: provide bounding box (minLat, minLon, maxLat, maxLon). ' +
+    'Point queries supported: set minLat=maxLat, minLon=maxLon. ' +
+    'A 200m buffer is always added around property bbox (adjustable via bufferMeters). ' +
     'All coordinates in WGS84.',
   inputSchema: mapUrlInputSchema,
 };
@@ -51,6 +54,7 @@ type MapUrlInput = {
   minLon?: number;
   maxLat?: number;
   maxLon?: number;
+  bufferMeters?: number;
   width?: number;
   height?: number;
 };
@@ -110,12 +114,10 @@ export const mapUrlHandler = withErrorHandling(async (args: MapUrlInput) => {
         throw new ValidationError('For property map, provide bounding box as minLat, minLon, maxLat, maxLon (WGS84)', 'bbox');
       }
 
-      const sweref99Bbox = wgs84BboxToSweref99({
-        minLat: args.minLat,
-        minLon: args.minLon,
-        maxLat: args.maxLat,
-        maxLon: args.maxLon,
-      });
+      const sweref99Bbox = wgs84BboxToSweref99(
+        { minLat: args.minLat, minLon: args.minLon, maxLat: args.maxLat, maxLon: args.maxLon },
+        args.bufferMeters,
+      );
 
       validateBbox(sweref99Bbox);
 

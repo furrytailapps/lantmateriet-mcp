@@ -5,14 +5,15 @@ import { lantmaterietClient } from '@/clients/lantmateriet-client';
 import { wgs84ToSweref99, wgs84BboxToSweref99, sweref99BboxToWgs84, validateBbox, type BoundingBox, CRS_WGS84 } from '@/lib/coordinates';
 
 export const stacSearchInputSchema = {
-  minLat: z.number().optional().describe('Min latitude (WGS84). e.g., 59.30'),
-  minLon: z.number().optional().describe('Min longitude (WGS84). e.g., 18.00'),
+  minLat: z.number().optional().describe('Min latitude (WGS84). e.g., 59.30. Can equal maxLat for point queries.'),
+  minLon: z.number().optional().describe('Min longitude (WGS84). e.g., 18.00. Can equal maxLon for point queries.'),
   maxLat: z.number().optional().describe('Max latitude (WGS84). e.g., 59.35'),
   maxLon: z.number().optional().describe('Max longitude (WGS84). e.g., 18.10'),
 
   latitude: z.number().optional().describe('Center latitude (WGS84). e.g., 59.33'),
   longitude: z.number().optional().describe('Center longitude (WGS84). e.g., 18.07'),
   radius: z.number().optional().default(500).describe('Search radius in meters (default: 500)'),
+  bufferMeters: z.number().optional().describe('Buffer around bbox edges in meters (default: 200). Only applies to bbox mode.'),
 
   collection: z
     .enum(['ortofoto', 'hojd'])
@@ -28,7 +29,9 @@ export const stacSearchTool = {
     'Search Lantmäteriet STAC catalog for downloadable orthophoto or elevation data. ' +
     'Returns COG (Cloud Optimized GeoTIFF) download URLs. Orthophotos include NIR bands for vegetation analysis. ' +
     'Specify either a bounding box (minLat/minLon/maxLat/maxLon) or center point + radius (latitude/longitude + radius). ' +
-    'All coordinates in WGS84. Example: latitude: 59.33, longitude: 18.07, radius: 500 for Stockholm area.',
+    'Point queries supported: set minLat=maxLat, minLon=maxLon. ' +
+    'A 200m buffer is always added around bbox edges (adjustable via bufferMeters). ' +
+    'All coordinates in WGS84. Example: latitude=59.33, longitude=18.07, radius=500 for Stockholm area.',
   inputSchema: stacSearchInputSchema,
 };
 
@@ -40,18 +43,17 @@ type StacSearchInput = {
   latitude?: number;
   longitude?: number;
   radius?: number;
+  bufferMeters?: number;
   collection?: 'ortofoto' | 'hojd';
   maxResults?: number;
 };
 
 function buildBbox(input: StacSearchInput): BoundingBox {
   if (input.minLat !== undefined && input.minLon !== undefined && input.maxLat !== undefined && input.maxLon !== undefined) {
-    const bbox = wgs84BboxToSweref99({
-      minLat: input.minLat,
-      minLon: input.minLon,
-      maxLat: input.maxLat,
-      maxLon: input.maxLon,
-    });
+    const bbox = wgs84BboxToSweref99(
+      { minLat: input.minLat, minLon: input.minLon, maxLat: input.maxLat, maxLon: input.maxLon },
+      input.bufferMeters,
+    );
     validateBbox(bbox);
     return bbox;
   }
